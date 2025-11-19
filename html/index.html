@@ -1,0 +1,572 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+<title>Az-Fishing — Cast • Reel • Keep/Release • Fish Menu</title>
+<style>
+/* ---------- THEME ---------- */
+:root{
+  --bg: #080b1000;
+  --ink: rgba(12,16,24,.88);
+  --glass: rgba(255,255,255,.06);
+  --border: rgba(255,255,255,.12);
+  --font: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+
+  /* Rarity colors */
+  --rar-common:    #9aa0a6;
+  --rar-uncommon:  #22c55e; /* green */
+  --rar-rare:      #8b5cf6; /* purple */
+  --rar-epic:      #e879f9; /* pink/violet */
+  --rar-legendary: #f6d06f; /* gold */
+
+  --ok:#45e58a; --info:#46b0ff; --warn:#ffb545; --bad:#ff4b4b;
+}
+
+html,body{height:100%;margin:0;background:transparent;color:#fff;font-family:var(--font);-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+button{font:inherit;color:inherit;background:transparent;border:none;cursor:pointer}
+
+/* Root overlay (IMPORTANT: allow pointer events so scrolling works) */
+#nui{position:fixed;inset:0;display:none;z-index:9999;pointer-events:auto}
+
+
+@keyframes drift{
+  0%{transform:translate(0,0) rotate(0deg)}
+  50%{transform:translate(-4vmax,2vmax) rotate(180deg)}
+  100%{transform:translate(0,0) rotate(360deg)}
+}
+
+/* Panels */
+.card{
+  background: linear-gradient(180deg, rgba(17,21,30,.72), rgba(10,12,18,.68));
+  border:1px solid var(--border);
+  border-radius:16px;
+
+  backdrop-filter: blur(10px) saturate(120%);
+}
+
+/* ---------- CASTING ---------- */
+#castWrap{position:absolute;inset:0;display:none;place-items:center;background:rgba(0,0,0,.28);pointer-events:auto}
+#castCard{width:min(720px,92vw);padding:16px 16px 12px}
+.castHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.hint{font-size:12px;opacity:.9}
+.bigRow{display:grid;gap:14px}
+.meterW{position:relative;height:26px;background:rgba(255,255,255,.06);border-radius:999px;padding:3px;overflow:hidden}
+.meter{height:100%;width:0%;border-radius:999px;background:linear-gradient(90deg,#7bffb9,#45e58a);transition:width .06s linear}
+.accW{position:relative;height:18px;background:rgba(255,255,255,.08);border-radius:999px;overflow:hidden}
+.accTarget{position:absolute;top:0;left:calc(50% - 10%);width:20%;height:100%;background:rgba(255,255,255,.22)}
+.accNeedle{position:absolute;top:0;left:0;width:10px;height:100%;background:#fff;border-radius:8px;box-shadow:0 0 10px rgba(255,255,255,.5)}
+.pill{padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.18);font-size:12px}
+.cta{padding:10px 16px;border-radius:999px;background:#2b8aee;border:1px solid rgba(255,255,255,.25)}
+.cta:active{transform:translateY(1px)}
+.toast{position:absolute;top:16%;left:50%;transform:translateX(-50%);padding:8px 12px;border-radius:999px;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(2px);display:none}
+
+/* ---------- REEL DOCK ---------- */
+#reelHud{position:absolute;right:18px;top:50%;transform:translateY(-50%);display:none;width:148px;pointer-events:auto}
+.dock{padding:12px;display:flex;flex-direction:column;gap:12px}
+.vbarW{height:126px;background:rgba(255,255,255,.06);border-radius:12px;padding:3px;position:relative;overflow:hidden}
+.vbar{position:absolute;left:3px;right:3px;bottom:3px;height:0%;border-radius:9px;transition:height .1s linear}
+.vbar.tension{background:linear-gradient(180deg,#57e389 0%, #ffb545 65%, #ff4b4b 100%)}
+.vbar.stamina{background:linear-gradient(180deg,#92d3ff,#46b0ff)}
+.vbar.progress{background:linear-gradient(180deg,#7bffb9,#45e58a)}
+.label{font-size:12px;opacity:.95;display:flex;justify-content:space-between}
+.bigNum{font-weight:800;letter-spacing:.3px}
+#lineCard{display:flex;flex-direction:column;gap:6px}
+#ft{font-size:22px;font-weight:800}
+.reelBtn{margin-top:2px;padding:10px;border-radius:999px;background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.03));border:1px solid rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;gap:8px}
+.spin{animation:spin .6s linear infinite} @keyframes spin{to{transform:rotate(360deg)}}
+
+/* ---------- HOOK ---------- */
+#hook{display:none;position:absolute;inset:0;place-items:center;background:rgba(0,0,0,.35);pointer-events:auto}
+
+/* ---------- RESULT ---------- */
+#result{position:absolute;left:50%;top:55%;transform:translate(-50%,-50%);display:none;width:min(560px,92vw);pointer-events:auto;padding:16px}
+.topRow{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.name{font-weight:800}
+.badge{font-size:12px;padding:4px 8px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.btnRow{display:flex;gap:10px;justify-content:flex-end;margin-top:10px}
+.btn{padding:10px 14px;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14)}
+.keep{background:linear-gradient(180deg,#7bffb9,#45e58a);color:#062b11}
+.release{background:linear-gradient(180deg,#ffbfbf,#ff5a5a);color:#2b0000}
+.small{font-size:12px;opacity:.8;text-align:center;margin-top:6px}
+
+/* ---------- FISH MENU ---------- */
+#invWrap{position:absolute;inset:0;display:none;place-items:center;background:rgba(0,0,0,.34);pointer-events:auto}
+#invCard{
+  width:min(1000px,94vw);
+  max-height:82vh;
+  position:relative;
+
+  /* KEY: make header fixed and body scrollable */
+  display:flex;
+  flex-direction:column;
+  overflow:hidden; /* keep scroll only on body */
+}
+
+/* Header */
+#invHeader{
+  display:flex; align-items:center; gap:12px; justify-content:space-between;
+  padding:14px;
+  border-bottom:1px solid rgba(255,255,255,.10);
+  backdrop-filter:blur(4px);
+  position:sticky; top:0; z-index:2;
+  background:linear-gradient(180deg, rgba(12,16,24,.85), rgba(12,16,24,.65));
+}
+.titleRow{display:flex;align-items:center;gap:10px}
+.logoDot{width:12px;height:12px;border-radius:50%;background:linear-gradient(45deg,#60efff,#0061ff);box-shadow:0 0 22px rgba(0,153,255,.9)}
+.invTitle{font-weight:900;letter-spacing:.5px}
+#invStats{display:flex;gap:8px;flex-wrap:wrap}
+.stat{font-size:12px;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)}
+#invToolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.chip{padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.14);font-size:12px;transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease}
+.chip:hover{transform:translateY(-1px);box-shadow:0 10px 28px rgba(0,0,0,.35);border-color:rgba(255,255,255,.25)}
+.chip.active{outline:2px solid rgba(255,255,255,.28);box-shadow:0 0 22px rgba(255,255,255,.18) inset}
+
+/* Scrollable grid body (the list) */
+#invBody{
+  flex:1 1 auto;
+  overflow:auto;                 /* KEY: scroll happens here */
+  padding:14px;
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
+  gap:14px;
+
+  /* Nice scrolling behavior */
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable both-edges;
+
+  /* Firefox scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,.45) rgba(0,0,0,.3);
+  touch-action: auto;
+}
+
+/* WebKit scrollbar */
+#invBody::-webkit-scrollbar{ width:10px }
+#invBody::-webkit-scrollbar-track{ background:rgba(0,0,0,.35); border-radius:10px }
+#invBody::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.45); border-radius:10px }
+
+/* Fish card with neon rarity aura + foil tiers */
+.fCard{
+  position:relative; overflow:hidden; border-radius:16px; padding:12px;
+  background:linear-gradient(180deg, rgba(16,20,28,.70), rgba(10,12,18,.70));
+  border:1px solid rgba(255,255,255,.12);
+  transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+  will-change: transform;
+}
+.fCard:hover{ transform:translateY(-3px); box-shadow:0 25px 60px rgba(0,0,0,.55); border-color:rgba(255,255,255,.22) }
+.fCard::before{
+  content:""; position:absolute; inset:-30%; z-index:0; filter:blur(40px); opacity:.85;
+  background:
+    radial-gradient(40% 45% at 20% 20%, var(--rar-color, #8b5cf6) 0%, transparent 60%),
+    radial-gradient(45% 40% at 80% 80%, rgba(255,255,255,.12) 0%, transparent 60%);
+}
+.fInner{position:relative; z-index:1}
+.fRow{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.fName{font-weight:900;letter-spacing:.2px;text-shadow:0 1px 0 rgba(0,0,0,.3)}
+.fMeta{font-size:12px;opacity:.92;margin-top:4px}
+.rChip{font-size:12px;padding:5px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.18);display:inline-flex;align-items:center;gap:6px;background:rgba(0,0,0,.25);box-shadow: inset 0 0 0 1px rgba(255,255,255,.06)}
+.rDot{width:9px;height:9px;border-radius:50%;box-shadow:0 0 14px currentColor}
+.strW{height:8px;background:rgba(255,255,255,.10);border-radius:999px;padding:2px;margin-top:10px}
+.strBar{height:100%;width:0%;border-radius:999px;background:linear-gradient(90deg,#60efff,#8b5cf6,#f6d06f)}
+.fActions{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
+.btnGhost{padding:8px 12px;border-radius:10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.20);font-size:12px}
+.btnGhost:hover{box-shadow:0 10px 28px rgba(0,0,0,.35)}
+
+/* Rarity classes (set --rar-color) */
+.rk-common     { --rar-color: var(--rar-common)    }
+.rk-uncommon   { --rar-color: var(--rar-uncommon)  }
+.rk-rare       { --rar-color: var(--rar-rare)      }
+.rk-epic       { --rar-color: var(--rar-epic)      }
+.rk-legendary  { --rar-color: var(--rar-legendary) }
+
+/* EPIC glow */
+.fCard.rk-epic::after{
+  content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none; z-index:2;
+  background:
+    radial-gradient(60% 80% at 50% 0%, rgba(232,121,249,.18), transparent 70%),
+    radial-gradient(40% 60% at 100% 100%, rgba(139,92,246,.14), transparent 70%);
+  animation: epicPulse 3.6s ease-in-out infinite;
+  mix-blend-mode: screen;
+}
+@keyframes epicPulse{0%,100%{opacity:.35; filter:blur(10px)}50%{opacity:.75; filter:blur(16px)}}
+
+/* LEGENDARY foil ring */
+.fCard.rk-legendary{border-color: rgba(246,208,111,.55); box-shadow:0 0 0 1px rgba(246,208,111,.35) inset, 0 0 38px rgba(246,208,111,.25)}
+.fCard.rk-legendary .rChip{background:rgba(246,208,111,.08);border-color:rgba(246,208,111,.55)}
+.fCard.rk-legendary .foil{
+  position:absolute; inset:0; border-radius:inherit; pointer-events:none; z-index:3;
+  background:
+    conic-gradient(from var(--a,0deg), #fff8 0%, #ffd86b 12%, #ff9f2e 22%, #fff6 30%, #cf93ff 45%, #7cd7ff 60%, #fff8 72%, #ffd86b 88%, #fff8 100%);
+  -webkit-mask: linear-gradient(#0000 0 0), linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  padding:1px; opacity:.6; mix-blend-mode:screen;
+  animation: foilSpin 8s linear infinite;
+}
+@keyframes foilSpin{to{--a:360deg}}
+
+/* Empty state */
+.empty{opacity:.9;text-align:center;padding:18px;border-radius:14px;border:1px dashed rgba(255,255,255,.22);background:rgba(255,255,255,.03)}
+
+/* ---------- UTIL ---------- */
+.hide{display:none}
+</style>
+</head>
+<body>
+<div id="nui" aria-hidden="true">
+  <div class="bgFx"></div>
+
+  <!-- CAST -->
+  <div id="castWrap">
+    <div id="castCard" class="card">
+      <div class="castHead">
+        <div style="font-weight:900;letter-spacing:.4px">Cast</div>
+        <div class="hint">Hold anywhere or press <b>Space</b> to charge power. Release in the bright band for accuracy.</div>
+      </div>
+      <div class="bigRow">
+        <div class="meterW"><div id="power" class="meter"></div></div>
+        <div class="accW" style="margin-top:8px">
+          <div class="accTarget"></div>
+          <div id="needle" class="accNeedle"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
+          <div id="castInfo" class="pill">Power: 0% • Accuracy: 0%</div>
+          <button id="castBtn" class="cta">HOLD / RELEASE</button>
+        </div>
+      </div>
+    </div>
+    <div id="castToast" class="toast">Casting…</div>
+  </div>
+
+  <!-- REEL DOCK -->
+  <div id="reelHud">
+    <div class="card dock">
+      <div class="label"><span>Tension</span><span id="tensionPct" class="bigNum">0%</span></div>
+      <div class="vbarW"><div id="tensionBar" class="vbar tension"></div></div>
+      <div class="label"><span>Stamina</span><span id="staminaPct" class="bigNum">100%</span></div>
+      <div class="vbarW"><div id="staminaBar" class="vbar stamina"></div></div>
+
+      <div id="lineCard">
+        <div class="label"><span>Line</span><span id="ft" class="bigNum">0 ft</span></div>
+        <div class="label" style="margin-top:-6px"><span>Progress</span><span id="progPct" class="bigNum">0%</span></div>
+        <div class="vbarW"><div id="progressBar" class="vbar progress"></div></div>
+      </div>
+
+      <button id="reelBtn" class="reelBtn" title="Hold to reel">
+        <svg id="reelIcon" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/>
+          <path d="M12 4 v4" stroke="currentColor" stroke-width="2" />
+        </svg>
+        <span>REEL</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- HOOK prompt -->
+  <div id="hook"><div class="card" style="padding:12px 16px"><b>HOOK!</b> Press <b>Reel</b> / <b>Space</b> now</div></div>
+
+  <!-- RESULT -->
+  <div id="result" class="card">
+    <div class="topRow">
+      <div id="rName" class="name">Fish</div>
+      <div id="rStars">★★★</div>
+    </div>
+    <div class="row" style="margin-bottom:6px">
+      <span id="rWeight" class="badge">0.000 lb</span>
+      <span id="rLen" class="badge">0.000 in</span>
+      <span id="rVal" class="badge">$0</span>
+      <span id="rRarity" class="badge">Common</span>
+    </div>
+    <div class="btnRow">
+      <button id="btnRelease" class="btn release">Release</button>
+      <button id="btnKeep" class="btn keep">Keep</button>
+    </div>
+    <div class="small">Esc also closes this window.</div>
+  </div>
+
+  <!-- INVENTORY (/fishmenu) -->
+  <div id="invWrap">
+    <div id="invCard" class="card">
+      <div id="invHeader">
+        <div class="titleRow">
+          <div class="logoDot"></div>
+          <div class="invTitle">Caught Fish</div>
+        </div>
+        <div id="invStats"></div>
+        <div id="invToolbar">
+          <button class="chip" data-filter="all">All</button>
+          <button class="chip" data-filter="common">Common</button>
+          <button class="chip" data-filter="uncommon" style="color:var(--rar-uncommon)">Uncommon</button>
+          <button class="chip" data-filter="rare" style="color:var(--rar-rare)">Rare</button>
+          <button class="chip" data-filter="epic" style="color:var(--rar-epic)">Epic</button>
+          <button class="chip" data-filter="legendary" style="color:var(--rar-legendary)">Legendary</button>
+          <button id="invClose" class="chip">Close</button>
+        </div>
+      </div>
+
+      <!-- SCROLLABLE LIST -->
+      <div id="invBody"></div>
+    </div>
+  </div>
+</div>
+
+<!-- sfx -->
+<audio id="sfxBite"  src="sfx/bite.ogg"  preload="auto"></audio>
+<audio id="sfxSnap"  src="sfx/snap.ogg"  preload="auto"></audio>
+<audio id="sfxSlash" src="sfx/slash.ogg" preload="auto"></audio>
+
+<script>
+(() => {
+  const RES = (typeof GetParentResourceName === 'function') ? GetParentResourceName() : 'Az-Fishing';
+  const POST = (r, d={}) => fetch(`https://${RES}/${r}`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(d)});
+
+  const nui = document.getElementById('nui');
+
+  /* ------------ CAST ------------ */
+  const castWrap = document.getElementById('castWrap');
+  const castBtn = document.getElementById('castBtn');
+  const castToast = document.getElementById('castToast');
+  const powerEl = document.getElementById('power');
+  const needle = document.getElementById('needle');
+  const castInfo = document.getElementById('castInfo');
+  let casting=false, hold=false, power=0, needleX=0, dir=1, raf=0;
+
+  function showCast(){ openNui(); castWrap.style.display='grid'; casting=true; hold=false; power=0; needleX=0; dir=1; if(!raf) raf=requestAnimationFrame(loop); }
+  function hideCast(){ casting=false; castWrap.style.display='none'; if(raf){ cancelAnimationFrame(raf); raf=0; } }
+  function loop(){
+    if(hold) power = Math.min(100, power + 1.1 + (power>80?0.7:0));
+    needleX += dir * 0.7; if(needleX>100){needleX=100;dir=-1} if(needleX<0){needleX=0;dir=1}
+    powerEl.style.width = power + '%';
+    needle.style.left = `calc(${needleX}% - 5px)`;
+    const acc = Math.max(0, 100 - Math.abs(needleX-50)*4.6);
+    castInfo.textContent = `Power: ${Math.round(power)}% • Accuracy: ${Math.round(acc)}%`;
+    raf=requestAnimationFrame(loop);
+  }
+  function beginHold(){ if(!casting) return; hold=true; }
+  function endHold(){
+    if(!casting || !hold) return; hold=false;
+    const acc = Math.max(0, 100 - Math.abs(needleX-50)*4.6);
+    hideCast(); castToast.style.display='block';
+    POST('castRelease', { power: Math.round(power), accuracy: Math.round(acc) }).catch(()=>{});
+  }
+  castBtn.addEventListener('pointerdown', e=>{e.preventDefault(); beginHold();});
+  window.addEventListener('pointerdown', e=>{ if(casting){ beginHold(); } }, {passive:true});
+  window.addEventListener('pointerup', e=>{ if(casting){ endHold(); } }, {passive:true});
+  window.addEventListener('keydown', e=>{
+    if(e.code==='Space'){ if(casting){ e.preventDefault(); beginHold(); } }
+    if(e.code==='Escape'){ POST('escape').catch(()=>{}); }
+  });
+  window.addEventListener('keyup', e=>{ if(e.code==='Space'){ if(casting){ e.preventDefault(); endHold(); } } });
+
+  /* ------------ REEL HUD ------------ */
+  const hud = document.getElementById('reelHud');
+  const btn = document.getElementById('reelBtn');
+  const icon = document.getElementById('reelIcon');
+  const tBar = document.getElementById('tensionBar');
+  const sBar = document.getElementById('staminaBar');
+  const pBar = document.getElementById('progressBar');
+  const tPct = document.getElementById('tensionPct');
+  const sPct = document.getElementById('staminaPct');
+  const progPct = document.getElementById('progPct');
+  const ftEl = document.getElementById('ft');
+  let spinning=false;
+
+  function showHud(){ openNui(); hud.style.display='block'; }
+  function hideHud(){ hud.style.display='none'; }
+  function setBars(t,s,p,ft){
+    const T=Math.max(0,Math.min(100,t||0));
+    const S=Math.max(0,Math.min(100,s||0));
+    const P=Math.max(0,Math.min(100,p||0));
+    tBar.style.height=T+'%'; sBar.style.height=S+'%'; pBar.style.height=P+'%';
+    tPct.textContent=Math.round(T)+'%'; sPct.textContent=Math.round(S)+'%'; progPct.textContent=Math.round(P)+'%';
+    if(typeof ft==='number'){ ftEl.textContent = Math.max(0, Math.round(ft)) + ' ft'; }
+  }
+  function reelDown(){ if(spinning) return; spinning=true; icon.classList.add('spin'); POST('reelDown',{}); POST('reelPulse',{}); }
+  function reelUp(){ if(!spinning) return; spinning=false; icon.classList.remove('spin'); POST('reelUp',{}); }
+  btn.addEventListener('pointerdown', e=>{e.preventDefault(); reelDown();});
+  window.addEventListener('pointerup', e=>{ if(spinning) reelUp(); }, {passive:true});
+  window.addEventListener('keydown', e=>{ if(e.code==='Space' && hud.style.display==='block'){ e.preventDefault(); reelDown(); } });
+  window.addEventListener('keyup', e=>{ if(e.code==='Space' && hud.style.display==='block'){ e.preventDefault(); reelUp(); } });
+
+  /* Hook prompt */
+  const hook = document.getElementById('hook');
+  function showHook(){ openNui(); hook.style.display='grid'; }
+  function hideHook(){ hook.style.display='none'; }
+  hook.addEventListener('pointerdown', e=>{ e.preventDefault(); POST('hookNow',{}); hideHook(); });
+  window.addEventListener('keydown', e=>{ if(e.code==='Space' && hook.style.display==='grid'){ e.preventDefault(); POST('hookNow',{}); hideHook(); } });
+
+  /* ------------ RESULT ------------ */
+  const res = document.getElementById('result');
+  const rName = document.getElementById('rName');
+  const rStars = document.getElementById('rStars');
+  const rWeight= document.getElementById('rWeight');
+  const rLen   = document.getElementById('rLen');
+  const rVal   = document.getElementById('rVal');
+  const rRar   = document.getElementById('rRarity');
+  const btnKeep= document.getElementById('btnKeep');
+  const btnRel = document.getElementById('btnRelease');
+
+  function showResult(f){
+    hideHud(); res.style.display='block'; openNui();
+    rName.textContent = f.name || 'Fish';
+    rStars.textContent = '★★★★★'.slice(0, Math.max(1, Math.min(5, f.stars||3)));
+    rWeight.textContent = (f.weight_lbs||0).toFixed(3)+' lb';
+    rLen.textContent = (f.length_in||0).toFixed(3)+' in';
+    rVal.textContent = '$'+(f.value||0);
+    rRar.textContent = f.rarity||'Common';
+  }
+  function closeAll(){
+    hideHook(); hideHud(); hideCast(); res.style.display='none';
+    castToast.style.display='none'; invHide();
+    nui.style.display='none'; nui.setAttribute('aria-hidden','true');
+    nui.style.pointerEvents = 'auto'; // reset
+  }
+  btnKeep.onclick = () => { POST('keepFish',{}).finally(closeAll); };
+  btnRel.onclick  = () => { POST('releaseFish',{}).finally(closeAll); };
+  window.addEventListener('keydown', e=>{ if(e.code==='Escape'){ closeAll(); } });
+
+  /* ------------ FISH MENU ------------ */
+  const invWrap = document.getElementById('invWrap');
+  const invBody = document.getElementById('invBody');
+  const invStats = document.getElementById('invStats');
+  const invClose= document.getElementById('invClose');
+  const filterBtns = [...document.querySelectorAll('#invToolbar .chip')];
+  let invItems = [], activeFilter = 'all';
+
+  function rarityKey(r){
+    r = (r||'common').toString().toLowerCase();
+    if(r.startsWith('leg')) return 'legendary';
+    if(r.startsWith('epi')) return 'epic';
+    if(r.startsWith('rar')) return 'rare';
+    if(r.startsWith('un'))  return 'uncommon';
+    return 'common';
+  }
+
+  function invRender(){
+    // stats
+    const total = invItems.length;
+    const value = invItems.reduce((a,b)=> a + (b.value||0), 0);
+    const byR = {common:0,uncommon:0,rare:0,epic:0,legendary:0};
+    invItems.forEach(f=> byR[rarityKey(f.rarity)]++);
+    invStats.innerHTML = `
+      <span class="stat">Total: <b>${total}</b></span>
+      <span class="stat">Value: <b>$${value}</b></span>
+      <span class="stat">C:${byR.common} U:${byR.uncommon} R:${byR.rare} E:${byR.epic} L:${byR.legendary}</span>
+    `;
+
+    // body
+    invBody.innerHTML = '';
+    const list = invItems.filter(f => activeFilter==='all' ? true : rarityKey(f.rarity)===activeFilter);
+    if(list.length===0){
+      const d = document.createElement('div');
+      d.className='empty';
+      d.textContent = (activeFilter==='all') ? "No fish yet. Go reel some in!" : `No ${activeFilter} fish yet.`;
+      invBody.appendChild(d);
+      return;
+    }
+
+    list.forEach((f, i)=>{
+      const rk = rarityKey(f.rarity);
+      const weight = (typeof f.weight_lbs === 'number') ? f.weight_lbs.toFixed(2) : (f.weight_lbs || 0);
+      const length = (typeof f.length_in === 'number') ? f.length_in.toFixed(2) : (f.length_in || 0);
+
+      const card = document.createElement('div');
+      card.className = `fCard rk-${rk}`;
+      card.style.setProperty('--rar-color', `var(--rar-${rk})`);
+      card.innerHTML = `
+        <div class="fInner">
+          <div class="fRow">
+            <div>
+              <div class="fName">${f.name||'Fish'}</div>
+              <div class="fMeta">$${f.value||0} • ${f.strength||0} STR • ${weight} lb • ${length} in</div>
+            </div>
+            <span class="rChip chip-${rk}">
+              <span class="rDot" style="color:var(--rar-${rk})"></span>
+              ${f.rarity || 'Common'}
+            </span>
+          </div>
+          <div class="strW"><div class="strBar" style="width:${Math.min(100, f.strength||0)}%"></div></div>
+          <div class="fActions">
+            <button class="btnGhost" data-idx="${i+1}">Eat</button>
+          </div>
+          ${rk==='legendary' ? '<div class="foil"></div>' : ''}
+        </div>
+      `;
+      card.querySelector('.btnGhost').onclick = () => {
+        fetch(`https://${RES}/eatFish`, {method:'POST',headers:{'Content-Type':'application/json'}, body:JSON.stringify({index: i+1})})
+          .then(()=> fetch(`https://${RES}/requestFishMenu`, {method:'POST'}))
+          .catch(()=>{});
+      };
+      invBody.appendChild(card);
+    });
+  }
+
+  function openNui(){
+    nui.style.display='block';
+    nui.setAttribute('aria-hidden','false');
+    nui.style.pointerEvents = 'auto'; // ensure wheel/scroll works
+  }
+
+  function invShow(items){
+    openNui();
+    invWrap.style.display='grid';
+    invItems = Array.isArray(items) ? items : [];
+    invRender();
+    // focus the scroll container so wheel/touch always apply here
+    invBody.tabIndex = -1;
+    invBody.focus({preventScroll:true});
+  }
+  function invHide(){ invWrap.style.display='none'; }
+
+  // filters
+  filterBtns.forEach(b=>{
+    const k = b.dataset.filter;
+    b.addEventListener('click', ()=>{
+      if(['all','common','uncommon','rare','epic','legendary'].includes(k)){
+        activeFilter = k;
+        filterBtns.forEach(x=>x.classList.toggle('active', x===b));
+        invRender();
+        invBody.scrollTop = 0; // reset scroll after filtering
+      } else if (b.id==='invClose'){
+        fetch(`https://${RES}/closeFishMenu`, {method:'POST'}).finally(invHide);
+      }
+    });
+  });
+  document.querySelector('.chip[data-filter="all"]').classList.add('active');
+
+  invClose.onclick = ()=> fetch(`https://${RES}/closeFishMenu`,{method:'POST'}).finally(invHide);
+  window.addEventListener('keydown', e=>{
+    if(e.code==='Escape' && invWrap.style.display==='grid'){
+      e.preventDefault();
+      fetch(`https://${RES}/closeFishMenu`,{method:'POST'}).finally(invHide);
+    }
+  });
+
+  /* ------------ SFX / MESSAGES ------------ */
+  const sfxBite = document.getElementById('sfxBite');
+  const sfxSnap = document.getElementById('sfxSnap');
+  const sfxSlash= document.getElementById('sfxSlash');
+
+  window.addEventListener('message', ev=>{
+    const d = ev.data || {};
+    if(d.action==='openCast'){ openNui(); showCast(); }
+    else if(d.action==='openReel'){ castToast.style.display='none'; openNui(); showHud(); setBars(d.tension,d.stamina,d.progress,d.lineFt||0); }
+    else if(d.action==='update'){ setBars(d.tension,d.stamina,d.progress,d.lineFt); }
+    else if(d.action==='event'){
+      if(d.type==='bite'){ try{sfxBite.currentTime=0;sfxBite.play();}catch(e){} showHud(); showHook(); }
+      if(d.type==='snap'){ try{sfxSnap.currentTime=0;sfxSnap.play();}catch(e){} }
+      if(d.type==='win'){ try{sfxSlash.currentTime=0;sfxSlash.play();}catch(e){} }
+    }
+    else if(d.action==='showResult'){ showResult(d.fish||{}); }
+    else if(d.action==='closeAll'){ closeAll(); }
+    else if(d.action==='openFishMenu'){ invShow(d.fish||[]); }
+    else if(d.action==='closeFishMenu'){ invHide(); }
+  });
+
+  console.log('Az-Fishing NUI loaded — scrollable fish menu + rarity foils');
+})();
+</script>
+</body>
+</html>
