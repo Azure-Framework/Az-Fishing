@@ -1,7 +1,7 @@
 fx_version 'cerulean'
 games { 'gta5' }
 
-author 'Azure(TheStoicBear)'
+author 'MadebyAzure'
 description 'Fishing minigame (NUI reel spin)'
 version '1.0.0'
 
@@ -11,7 +11,7 @@ shared_scripts {
 }
 
 client_scripts {
-    'source/fish.lua',
+    'fish.lua',
     'source/client.lua',
     'source/anchor.lua'
 

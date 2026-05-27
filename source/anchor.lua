@@ -1,9 +1,10 @@
--- Boat anchor script using /anchor for the CLOSEST BOAT near the player.
--- Uses ox_lib: lib.getClosestVehicle(coords, maxDistance, includePlayerVehicle)
--- - You do NOT need to be in the driver seat (or even inside the boat)
--- - It finds the closest boat and anchors/unanchors that boat
--- - While anchored, boat CANNOT move forward/back/sideways
---   but WILL still move up/down with the waves (Z is NOT locked).
+
+
+
+
+
+
+
 
 local anchorState = {
     isAnchored = false,
@@ -15,7 +16,7 @@ local anchorState = {
 
 local DEBUG = false
 
--- =============== HELPERS ===============
+
 
 local function debugPrint(msg)
     if DEBUG then
@@ -34,7 +35,7 @@ end
 local function isBoat(vehicle)
     if not vehicle or vehicle == 0 then return false end
     local class = GetVehicleClass(vehicle)
-    -- 14 = Boats (includes jetskis, etc.)
+    
     return class == 14
 end
 
@@ -45,12 +46,12 @@ local function getDistanceEntityToEntity(ent1, ent2)
     return math.sqrt(dx * dx + dy * dy + dz * dz)
 end
 
--- Use ox_lib to get the closest boat to the player within maxDist
+
 local function getClosestBoatToPlayer(ped, maxDist)
     maxDist = maxDist or 20.0
 
     local coords = GetEntityCoords(ped)
-    -- lib.getClosestVehicle(coords, maxDistance?, includePlayerVehicle?)
+    
     local vehicle, vehicleCoords = lib.getClosestVehicle(coords, maxDist, true)
 
     if vehicle and vehicle ~= 0 and DoesEntityExist(vehicle) and isBoat(vehicle) then
@@ -67,7 +68,7 @@ local function getClosestBoatToPlayer(ped, maxDist)
 end
 
 local function playReelAnim(ped, duration)
-    -- Standing "working" style animation – works fine on deck/dock
+    
     local dict = "amb@world_human_gardener_plant@male@base"
     local anim = "base"
 
@@ -83,8 +84,8 @@ local function playReelAnim(ped, duration)
     end
 end
 
--- =============== ANCHOR PHYSICS LOOP ===============
--- Lock boat X/Y to anchorState.anchorX/Y but let Z position & Z velocity move naturally.
+
+
 
 local function startAnchorPhysicsLoop()
     CreateThread(function()
@@ -98,29 +99,29 @@ local function startAnchorPhysicsLoop()
                 break
             end
 
-            -- Current coords and velocity from physics
+            
             local bx, by, bz = table.unpack(GetEntityCoords(boat))
             local vx, vy, vz = table.unpack(GetEntityVelocity(boat))
 
-            -- Force X/Y to the anchor point, keep current Z from physics
+            
             SetEntityCoordsNoOffset(
                 boat,
                 anchorState.anchorX,
                 anchorState.anchorY,
-                bz,              -- DO NOT lock Z; use whatever the game gives
+                bz,              
                 false, false, false
             )
 
-            -- Kill horizontal velocity, keep vertical (bobbing)
+            
             SetEntityVelocity(boat, 0.0, 0.0, vz)
 
-            Wait(0) -- every frame
+            Wait(0) 
         end
         debugPrint("Anchor physics loop ended")
     end)
 end
 
--- =============== ANCHOR LOGIC ===============
+
 
 local function dropAnchor(ped, boat)
     if anchorState.isReeling then return end
@@ -136,16 +137,16 @@ local function dropAnchor(ped, boat)
     debugPrint("Dropping anchor")
 
     CreateThread(function()
-        -- Turn toward the boat, then play reel animation
+        
         TaskTurnPedToFaceEntity(ped, boat, 1000)
         Wait(1000)
 
-        local reelTime = 6000 -- ms
+        local reelTime = 6000 
         playReelAnim(ped, reelTime)
         local endTime = GetGameTimer() + reelTime
 
         while GetGameTimer() < endTime do
-            -- If they walk too far away from the boat, cancel
+            
             if getDistanceEntityToEntity(ped, boat) > 10.0 then
                 sendChat("^1Canceled:^7 you moved too far from the boat.")
                 ClearPedTasks(ped)
@@ -163,12 +164,12 @@ local function dropAnchor(ped, boat)
             return
         end
 
-        -- Save anchor X/Y from current boat position
+        
         local bx, by, bz = table.unpack(GetEntityCoords(boat))
         anchorState.anchorX = bx
         anchorState.anchorY = by
 
-        -- Kill immediate motion; engine off for "anchor down" feel
+        
         SetVehicleEngineOn(boat, false, true, false)
         SetVehicleForwardSpeed(boat, 0.0)
         SetEntityVelocity(boat, 0.0, 0.0, 0.0)
@@ -176,7 +177,7 @@ local function dropAnchor(ped, boat)
         anchorState.isAnchored = true
         anchorState.isReeling = false
 
-        -- Start the physics loop that keeps X/Y locked but lets Z move
+        
         startAnchorPhysicsLoop()
 
         sendChat("Anchor ^2set^7. Boat will stay in place but still rock with the waves.")
@@ -201,7 +202,7 @@ local function raiseAnchor(ped, boat)
         TaskTurnPedToFaceEntity(ped, boat, 1000)
         Wait(1000)
 
-        local reelTime = 6000 -- ms
+        local reelTime = 6000 
         playReelAnim(ped, reelTime)
         local endTime = GetGameTimer() + reelTime
 
@@ -223,7 +224,7 @@ local function raiseAnchor(ped, boat)
             return
         end
 
-        -- Stop anchoring; physics loop will auto-exit on next tick
+        
         anchorState.isAnchored = false
         anchorState.isReeling = false
 
@@ -232,7 +233,7 @@ local function raiseAnchor(ped, boat)
     end)
 end
 
--- =============== COMMAND ===============
+
 
 RegisterCommand("anchor", function()
     if anchorState.isReeling then
@@ -242,7 +243,7 @@ RegisterCommand("anchor", function()
 
     local ped = PlayerPedId()
 
-    -- If our tracked anchored boat vanished, reset state
+    
     if anchorState.isAnchored and (not anchorState.boat or not DoesEntityExist(anchorState.boat)) then
         anchorState.isAnchored = false
         anchorState.boat = nil
@@ -254,12 +255,12 @@ RegisterCommand("anchor", function()
         return
     end
 
-    -- Toggle anchor for THIS boat
+    
     if anchorState.isAnchored and anchorState.boat == boat then
-        -- This boat is currently anchored -> raise anchor
+        
         raiseAnchor(ped, boat)
     else
-        -- Either no anchor yet, or you're on a different boat -> drop anchor for this one
+        
         dropAnchor(ped, boat)
     end
 end, false)

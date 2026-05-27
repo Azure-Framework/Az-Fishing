@@ -1,11 +1,15 @@
+
+
+
+
 local RES = GetCurrentResourceName()
 
--- =========================
--- SHARED CONFIG (from config.lua) + FALLBACKS
--- =========================
+
+
+
 Config = Config or {}
 
-Config.Difficulty   = Config.Difficulty   or "balanced"  -- "arcade" | "balanced" | "realistic"
+Config.Difficulty   = Config.Difficulty   or "balanced"  
 Config.TickMs       = Config.TickMs       or 100
 Config.Presets      = Config.Presets      or {
   arcade   = { basePulse = 9.5,  tensionPerPulse = 0.75, staminaDrainPerPulse = 0.7,  passiveTensionDecay = 1.5, passiveStaminaRecover = 1.25, spikeFreq = 5 },
@@ -28,12 +32,12 @@ local FishTable = {
   {name="Golden Koi",       valueMin=600, valueMax=1200,strength=42, rarity="Legendary",wMin=5.0, wMax=18.0, lMin=18.0, lMax=36.0, stars=5},
 }
 
--- =========================
--- NOTIFICATION WRAPPER
--- =========================
+
+
+
 
 local function notify(msg, nType)
-  -- nType: "inform" | "success" | "error" (ox_lib style)
+  
   if lib and type(lib.notify) == "function" then
     lib.notify({
       title       = 'Az-Fishing',
@@ -47,9 +51,9 @@ local function notify(msg, nType)
   end
 end
 
--- =========================
--- NUI HELPERS
--- =========================
+
+
+
 
 local function NUI(action, data)
   data = data or {}
@@ -61,9 +65,9 @@ local function focus(on)
   SetNuiFocus(on, on)
 end
 
--- =========================
--- ANIMS & ROD
--- =========================
+
+
+
 
 local function loadAnimDict(dict,timeout)
   timeout = timeout or 2000
@@ -98,9 +102,9 @@ local function removeRod(obj)
   end
 end
 
--- =========================
--- WATER CHECK
--- =========================
+
+
+
 
 local function isNearWater(x,y,z)
   local offs = {
@@ -120,9 +124,9 @@ local function isNearWater(x,y,z)
   return false,nil
 end
 
--- =========================
--- KVP STORAGE
--- =========================
+
+
+
 
 local function saveCaught(list)
   SetResourceKvp("az_fishing_caught", json.encode(list or {}))
@@ -140,9 +144,9 @@ local function addCaught(f)
   saveCaught(L)
 end
 
--- =========================
--- SELLERS / FISH BUYERS
--- =========================
+
+
+
 
 local sellerDrawDist, sellerInteractDist = 25.0, 2.0
 local sellerPeds = {}
@@ -201,7 +205,7 @@ local function spawnSellerPeds()
       SetEntityInvincible(ped, true)
       FreezeEntityPosition(ped, true)
 
-      -- optional ambient idle
+      
       TaskStartScenarioInPlace(ped, "WORLD_HUMAN_STAND_IMPATIENT", 0, true)
 
       sellerPeds[i] = ped
@@ -229,7 +233,7 @@ CreateThread(function()
           if dist < sellerDrawDist then
             sleep = 0
 
-            -- draw marker only if on foot (to reduce spam for vehicles driving by)
+            
             if IsPedOnFoot(ped) then
               DrawMarker(
                 1, c.x, c.y, c.z - 1.0,
@@ -243,8 +247,8 @@ CreateThread(function()
             if dist < sellerInteractDist and IsPedOnFoot(ped) and not IsEntityInWater(ped) then
               draw3DText(c.x, c.y, c.z + 0.8, ("~b~[G]~s~ Sell fish to %s"):format(s.name or "Fish Buyer"))
 
-              -- Use G (47) so it doesn't collide with E fishing scripts
-              if IsControlJustPressed(0, 47) then -- INPUT_DETONATE (G)
+              
+              if IsControlJustPressed(0, 47) then 
                 local list = getCaught()
                 if #list == 0 then
                   notify("You don't have any fish to sell.", "error")
@@ -274,9 +278,9 @@ CreateThread(function()
   end
 end)
 
--- =========================
--- FISH PICKING / CLEANUP
--- =========================
+
+
+
 
 local function pickFish()
   local b = FishTable[math.random(1,#FishTable)]
@@ -310,9 +314,9 @@ local function cleanupAll()
   currentFish = nil
 end
 
--- =========================
--- CASTING
--- =========================
+
+
+
 
 local function startCasting()
   if isCasting or inFight then
@@ -365,9 +369,9 @@ local function scheduleBite(accuracy, power)
   end)
 end
 
--- =========================
--- REEL HUD & FIGHT
--- =========================
+
+
+
 
 local function openReelHUD()
   NUI("openReel", {
@@ -439,9 +443,9 @@ local function startFight()
   end)
 end
 
--- =========================
--- COMMANDS
--- =========================
+
+
+
 
 RegisterCommand("fish", function()
   startCasting()
@@ -465,9 +469,9 @@ CreateThread(function()
   end
 end)
 
--- =========================
--- NUI CALLBACKS
--- =========================
+
+
+
 
 RegisterNUICallback("castRelease", function(data, cb)
   cb("ok")

@@ -1,9 +1,9 @@
 Config = Config or {}
 
--- =========================
--- FISH SELLERS (PALETO / SANDY)
--- =========================
--- Add/remove/edit as you like. Coords are near good dock / pier spots.
+
+
+
+
 Config.Sellers = {
   {
     name    = "Paleto Bay Fish Buyer",
